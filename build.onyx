@@ -1,0 +1,43 @@
+#load "./module"
+
+use core {package, *}
+use cbindgen {*}
+use sqlite3_native
+
+main :: () {
+    path := module_path(#file);
+
+    c_file_path := string.concat(path, "sqlite.c");
+
+    result := generate_c_binding(.{
+        output_file = c_file_path,
+        foreign_block = sqlite3_native.foreign_block,
+
+        preamble = .[
+"""
+#include "sqlite3.h"
+"""
+        ],
+    });
+
+    if !result {
+        os.exit(1);
+    }
+
+    flags := os.command()
+        ->path("pkg-config")
+        ->args(.["--cflags", "--libs", "sqlite3"])
+        ->output() ?? "";
+
+    flags = tprintf(
+        "-Wno-int-conversion {}",
+        string.strip_whitespace(flags)
+    );
+
+    result = compile_c_file(c_file_path, string.concat(path, "onyx_sqlite3"), flags=flags);
+    if !result {
+        os.exit(1);
+    }
+
+    os.remove_file(c_file_path);
+}

@@ -1,0 +1,25 @@
+#load "./../module.onyx"
+#library_path "./.."
+
+use sqlite3
+use core {*}
+
+main :: () {
+    use db := sqlite3.open("./test.db")!
+
+    db->exec("CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL);")
+
+    use stmt := db->prepare("SELECT * FROM users WHERE id=?;")!
+    stmt->bind(1, 4)
+
+    cols := stmt->cols()
+    while stmt->step() {
+        for c in cols {
+            col_name := stmt->col_name(c)
+            col_text := stmt->col_text(c)
+
+            printf("({}) {}: {} {}\t", stmt->col_type(c), col_name, col_text)
+        }
+        print("\n")
+    }
+}

@@ -1,0 +1,184 @@
+package sqlite3
+
+#load "./native"
+
+use core { package, Result, cptr }
+use core.intrinsics.types {*}
+use sqlite3_native { native :: package }
+
+SQLite :: struct {
+    _db: native.sqlite3
+}
+
+SQLite.close :: close
+SQLite.exec :: exec
+SQLite.prepare :: prepare
+
+Error :: enum {
+    Ok         :: 0 + native.SQLITE_OK
+    Error      :: 0 + native.SQLITE_ERROR
+    Internal   :: 0 + native.SQLITE_INTERNAL
+    Perm       :: 0 + native.SQLITE_PERM
+    Abort      :: 0 + native.SQLITE_ABORT
+    Busy       :: 0 + native.SQLITE_BUSY
+    Locked     :: 0 + native.SQLITE_LOCKED 
+    NoMem      :: 0 + native.SQLITE_NOMEM
+    ReadOnly   :: 0 + native.SQLITE_READONLY
+    Interrupt  :: 0 + native.SQLITE_INTERRUPT
+    IOErr      :: 0 + native.SQLITE_IOERR
+    Corrupt    :: 0 + native.SQLITE_CORRUPT
+    NotFound   :: 0 + native.SQLITE_NOTFOUND
+    Full       :: 0 + native.SQLITE_FULL
+    CantOpen   :: 0 + native.SQLITE_CANTOPEN
+    Protocol   :: 0 + native.SQLITE_PROTOCOL
+    Empty      :: 0 + native.SQLITE_EMPTY
+    Schema     :: 0 + native.SQLITE_SCHEMA
+    TooBig     :: 0 + native.SQLITE_TOOBIG
+    Constraint :: 0 + native.SQLITE_CONSTRAINT
+    Mismatch   :: 0 + native.SQLITE_MISMATCH
+    Misue      :: 0 + native.SQLITE_MISUSE
+    NoLFS      :: 0 + native.SQLITE_NOLFS
+    Auth       :: 0 + native.SQLITE_AUTH
+    Format     :: 0 + native.SQLITE_FORMAT
+    Range      :: 0 + native.SQLITE_RANGE
+    NotADB     :: 0 + native.SQLITE_NOTADB
+}
+
+Type :: enum {
+    Int           :: 0 + native.SQLITE_INTEGER
+    Float         :: 0 + native.SQLITE_FLOAT
+    Blob          :: 0 + native.SQLITE_BLOB 
+    Null          :: 0 + native.SQLITE_NULL
+    Text          :: 0 + native.SQLITE_TEXT
+    Utf8          :: 0 + native.SQLITE_UTF8
+    Utf16le       :: 0 + native.SQLITE_UTF16LE
+    Utf16be       :: 0 + native.SQLITE_UTF16BE
+    Utf16         :: 0 + native.SQLITE_UTF16
+    Any           :: 0 + native.SQLITE_ANY
+    Utf16_Aligned :: 0 + native.SQLITE_UTF16_ALIGNED
+}
+
+version :: () -> str {
+    return native.sqlite3_libversion() |> cptru8_to_temp()
+}
+
+open :: (name: str) -> Result(SQLite, Error)  {
+    db: native.sqlite3
+    res := native.sqlite3_open(
+        str.to_cstr_on_stack(name),
+        &db
+    )
+
+    if res != native.SQLITE_OK {
+        return .{ Err = ~~res }
+    }
+
+    return .{ Ok = .{ db } }
+}
+
+close :: (db: SQLite) {
+    native.sqlite3_close(db._db)
+}
+
+#overload
+__dispose_used_local :: (db: &SQLite) {
+    db.*->close()
+}
+
+exec :: (db: SQLite, stmt: str) -> Error {
+    return ~~(
+        str.to_cstr_on_stack(stmt)
+        |> native.sqlite3_exec(db._db, _, null, null, null)
+    )
+}
+
+prepare :: (db: SQLite, stmt: str) -> Result(Statement, Error) {
+    out: native.sqlite3_stmt
+    err := native.sqlite3_prepare_v2(db._db, stmt.data, stmt.count, &out, null)
+    if err != native.SQLITE_OK {
+        return .{ Err = ~~err }
+    }
+
+    return .{ Ok = .{ out } }
+}
+
+
+
+Statement :: struct {
+    _stmt: native.sqlite3_stmt
+}
+
+Statement.finalize :: (stmt: Statement) {
+    native.sqlite3_finalize(stmt._stmt)
+}
+
+#overload
+__dispose_used_local :: (stmt: &Statement) {
+    stmt.*->finalize()
+}
+
+
+Statement.bind :: #match #local {}
+
+#overload
+Statement.bind :: (stmt: Statement, index: i32, value: i32) -> Error {
+    return ~~native.sqlite3_bind_int(stmt._stmt, index, value)
+}
+
+#overload
+Statement.bind :: (stmt: Statement, index: i32, value: i64) -> Error {
+    return ~~native.sqlite3_bind_int64(stmt._stmt, index, value)
+}
+
+#overload
+Statement.bind :: (stmt: Statement, index: i32, value: $T/type_is_float) -> Error {
+    return ~~native.sqlite3_bind_double(stmt._stmt, index, ~~value)
+}
+
+#overload
+Statement.bind :: (stmt: Statement, index: i32, value: str) -> Error {
+    return ~~native.sqlite3_bind_text(stmt._stmt, index, value.data, value.count, null)
+}
+
+Statement.cols :: (stmt: Statement) => native.sqlite3_column_count(stmt._stmt)
+
+Statement.step :: (stmt: Statement) -> bool {
+    return native.sqlite3_step(stmt._stmt)  == native.SQLITE_ROW
+}
+
+Statement.col_name :: (stmt: Statement, index: i32) -> str {
+    return native.sqlite3_column_name(stmt._stmt, index) |> cptru8_to_temp() 
+}
+
+Statement.col_type :: (stmt: Statement, index: i32) -> Type {
+    return ~~native.sqlite3_column_type(stmt._stmt, index)
+}
+
+Statement.col_text :: (stmt: Statement, index: i32) -> str {
+    return native.sqlite3_column_text(stmt._stmt, index) |> cptru8_to_temp() 
+}
+
+Statement.col_int :: (stmt: Statement, index: i32) -> i32 {
+    return native.sqlite3_column_int(stmt._stmt, index)
+}
+
+Statement.col_int64 :: (stmt: Statement, index: i32) -> i64 {
+    return native.sqlite3_column_int64(stmt._stmt, index)
+}
+
+Statement.col_double :: (stmt: Statement, index: i32) -> f64 {
+    return native.sqlite3_column_double(stmt._stmt, index)
+}
+
+
+
+
+#local
+cptru8_to_temp :: (c: cptr(u8)) -> str {
+    len := c->extract_str(.[])
+    out := make_temp(str, len)
+    c->extract_str(out)
+    return out
+}
+
+

@@ -1,0 +1,13 @@
+package {
+    name "sqlite3" 
+    author "Brendan Hansen" 
+    url "https://github.com/onyx-lang/pkg-sqlite3" 
+    description "Bindings to SQLite3" 
+    version "0.0.1" 
+}
+
+config {
+    dependency_source_path "./lib" 
+    dependency_binary_path "./bin" 
+}
+
