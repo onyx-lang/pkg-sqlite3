@@ -59,10 +59,10 @@ Type :: enum {
 }
 
 version :: () -> str {
-    return native.sqlite3_libversion() |> cptru8_to_temp()
+    return native.sqlite3_libversion() |> cptru8_to_alloc(context.temp_allocator)
 }
 
-open :: (name: str) -> Result(SQLite, Error)  {
+open :: (name: str) -> Result(SQLite, Error) {
     db: native.sqlite3
     res := native.sqlite3_open(
         str.to_cstr_on_stack(name),
@@ -146,16 +146,16 @@ Statement.step :: (stmt: Statement) -> bool {
     return native.sqlite3_step(stmt._stmt)  == native.SQLITE_ROW
 }
 
-Statement.col_name :: (stmt: Statement, index: i32) -> str {
-    return native.sqlite3_column_name(stmt._stmt, index) |> cptru8_to_temp() 
+Statement.col_name :: (stmt: Statement, index: i32, alloc := context.temp_allocator) -> str {
+    return native.sqlite3_column_name(stmt._stmt, index) |> cptru8_to_alloc(alloc) 
 }
 
 Statement.col_type :: (stmt: Statement, index: i32) -> Type {
     return ~~native.sqlite3_column_type(stmt._stmt, index)
 }
 
-Statement.col_text :: (stmt: Statement, index: i32) -> str {
-    return native.sqlite3_column_text(stmt._stmt, index) |> cptru8_to_temp() 
+Statement.col_text :: (stmt: Statement, index: i32, alloc := context.temp_allocator) -> str {
+    return native.sqlite3_column_text(stmt._stmt, index) |> cptru8_to_alloc(alloc) 
 }
 
 Statement.col_int :: (stmt: Statement, index: i32) -> i32 {
@@ -174,9 +174,9 @@ Statement.col_double :: (stmt: Statement, index: i32) -> f64 {
 
 
 #local
-cptru8_to_temp :: (c: cptr(u8)) -> str {
+cptru8_to_alloc :: (c: cptr(u8), a: Allocator) -> str {
     len := c->extract_str(.[])
-    out := make_temp(str, len)
+    out := make(str, len, a)
     c->extract_str(out)
     return out
 }
