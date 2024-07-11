@@ -863,8 +863,6 @@ fts5_api :: struct {
     sqlite3_context_db_handle :: (_0: sqlite3_context) -> sqlite3 ---
     sqlite3_get_auxdata :: (_0: sqlite3_context, N: i32) -> cptr(void) ---
     sqlite3_set_auxdata :: (_0: sqlite3_context, N: i32, _2: [&] void, _3: [&] __func_hack) -> void ---
-    sqlite3_get_clientdata :: (_0: sqlite3, _1: [&] u8) -> cptr(void) ---
-    sqlite3_set_clientdata :: (_0: sqlite3, _1: [&] u8, _2: [&] void, _3: [&] __func_hack) -> i32 ---
     sqlite3_result_blob :: (_0: sqlite3_context, _1: [&] void, _2: i32, _3: [&] __func_hack) -> void ---
     sqlite3_result_blob64 :: (_0: sqlite3_context, _1: [&] void, _2: sqlite3_uint64, _3: [&] __func_hack) -> void ---
     sqlite3_result_double :: (_0: sqlite3_context, _1: f64) -> void ---
@@ -892,9 +890,6 @@ fts5_api :: struct {
     sqlite3_collation_needed :: (_0: sqlite3, _1: [&] void, _2: [&] __func_hack) -> i32 ---
     sqlite3_collation_needed16 :: (_0: sqlite3, _1: [&] void, _2: [&] __func_hack) -> i32 ---
     sqlite3_sleep :: (_0: i32) -> i32 ---
-    sqlite3_win32_set_directory :: (type: u64, zValue: [&] void) -> i32 ---
-    sqlite3_win32_set_directory8 :: (type: u64, zValue: [&] u8) -> i32 ---
-    sqlite3_win32_set_directory16 :: (type: u64, zValue: [&] void) -> i32 ---
     sqlite3_get_autocommit :: (_0: sqlite3) -> i32 ---
     sqlite3_db_handle :: (_0: sqlite3_stmt) -> sqlite3 ---
     sqlite3_db_name :: (db: sqlite3, N: i32) -> cptr(u8) ---
@@ -910,11 +905,8 @@ fts5_api :: struct {
     sqlite3_release_memory :: (_0: i32) -> i32 ---
     sqlite3_db_release_memory :: (_0: sqlite3) -> i32 ---
     sqlite3_soft_heap_limit64 :: (N: sqlite3_int64) -> sqlite3_int64 ---
-    sqlite3_hard_heap_limit64 :: (N: sqlite3_int64) -> sqlite3_int64 ---
     sqlite3_soft_heap_limit :: (N: i32) -> void ---
     sqlite3_table_column_metadata :: (db: sqlite3, zDbName: [&] u8, zTableName: [&] u8, zColumnName: [&] u8, pzDataType: [&] cptr(u8), pzCollSeq: [&] cptr(u8), pNotNull: [&] i32, pPrimaryKey: [&] i32, pAutoinc: [&] i32) -> i32 ---
-    sqlite3_load_extension :: (db: sqlite3, zFile: [&] u8, zProc: [&] u8, pzErrMsg: [&] cptr(u8)) -> i32 ---
-    sqlite3_enable_load_extension :: (db: sqlite3, onoff: i32) -> i32 ---
     sqlite3_auto_extension :: (xEntryPoint: [&] __func_hack) -> i32 ---
     sqlite3_cancel_auto_extension :: (xEntryPoint: [&] __func_hack) -> i32 ---
     sqlite3_reset_auto_extension :: () -> void ---
@@ -937,8 +929,6 @@ fts5_api :: struct {
     sqlite3_mutex_enter :: (_0: sqlite3_mutex) -> void ---
     sqlite3_mutex_try :: (_0: sqlite3_mutex) -> i32 ---
     sqlite3_mutex_leave :: (_0: sqlite3_mutex) -> void ---
-    sqlite3_mutex_held :: (_0: sqlite3_mutex) -> i32 ---
-    sqlite3_mutex_notheld :: (_0: sqlite3_mutex) -> i32 ---
     sqlite3_db_mutex :: (_0: sqlite3) -> sqlite3_mutex ---
     sqlite3_file_control :: (_0: sqlite3, zDbName: [&] u8, op: i32, _3: [&] void) -> i32 ---
     sqlite3_test_control :: (op: i32) -> i32 ---
@@ -965,7 +955,6 @@ fts5_api :: struct {
     sqlite3_backup_finish :: (p: sqlite3_backup) -> i32 ---
     sqlite3_backup_remaining :: (p: sqlite3_backup) -> i32 ---
     sqlite3_backup_pagecount :: (p: sqlite3_backup) -> i32 ---
-    sqlite3_unlock_notify :: (pBlocked: sqlite3, xNotify: [&] __func_hack, pNotifyArg: [&] void) -> i32 ---
     sqlite3_stricmp :: (_0: [&] u8, _1: [&] u8) -> i32 ---
     sqlite3_strnicmp :: (_0: [&] u8, _1: [&] u8, _2: i32) -> i32 ---
     sqlite3_strglob :: (zGlob: [&] u8, zStr: [&] u8) -> i32 ---
