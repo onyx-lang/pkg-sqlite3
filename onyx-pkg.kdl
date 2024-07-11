@@ -3,7 +3,7 @@ package {
     author "Brendan Hansen" 
     url "https://github.com/onyx-lang/pkg-sqlite3" 
     description "Bindings to SQLite3" 
-    version "0.0.3" 
+    version "0.0.4" 
 }
 
 config {
