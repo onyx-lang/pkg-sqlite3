@@ -11,3 +11,8 @@ config {
     dependency_binary_path "./bin" 
 }
 
+native {
+    library "onyx_sqlite3" 
+    build "onyx run --generate-foreign-info build" 
+}
+
