@@ -13,6 +13,7 @@ SQLite :: struct {
 SQLite.close :: close
 SQLite.exec :: exec
 SQLite.prepare :: prepare
+SQLite.errmsg :: errmsg
 
 Error :: enum {
     Ok         :: 0 + native.SQLITE_OK
@@ -100,6 +101,10 @@ prepare :: (db: SQLite, stmt: str) -> Result(Statement, Error) {
     }
 
     return .{ Ok = .{ out } }
+}
+
+errmsg :: (db: SQLite, allocator := context.temp_allocator) -> str {
+    return native.sqlite3_errmsg(db._db) |> cptru8_to_alloc(allocator)
 }
 
 
