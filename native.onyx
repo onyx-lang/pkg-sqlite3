@@ -627,10 +627,6 @@ sqlite3_pcache_methods :: struct {
 
 sqlite3_backup :: #distinct u64
 
-sqlite3_snapshot :: struct {
-    hidden: [48] u8
-}
-
 sqlite3_rtree_geometry :: struct {
     pContext: cptr(void)
     nParam: i32
@@ -973,16 +969,8 @@ fts5_api :: struct {
     sqlite3_vtab_in_first :: (pVal: sqlite3_value, ppOut: [&] sqlite3_value) -> i32 ---
     sqlite3_vtab_in_next :: (pVal: sqlite3_value, ppOut: [&] sqlite3_value) -> i32 ---
     sqlite3_vtab_rhs_value :: (_0: [&] sqlite3_index_info, _1: i32, ppVal: [&] sqlite3_value) -> i32 ---
-    sqlite3_stmt_scanstatus :: (pStmt: sqlite3_stmt, idx: i32, iScanStatusOp: i32, pOut: [&] void) -> i32 ---
-    sqlite3_stmt_scanstatus_v2 :: (pStmt: sqlite3_stmt, idx: i32, iScanStatusOp: i32, flags: i32, pOut: [&] void) -> i32 ---
-    sqlite3_stmt_scanstatus_reset :: (_0: sqlite3_stmt) -> void ---
     sqlite3_db_cacheflush :: (_0: sqlite3) -> i32 ---
     sqlite3_system_errno :: (_0: sqlite3) -> i32 ---
-    sqlite3_snapshot_get :: (db: sqlite3, zSchema: [&] u8, ppSnapshot: [&] cptr(sqlite3_snapshot)) -> i32 ---
-    sqlite3_snapshot_open :: (db: sqlite3, zSchema: [&] u8, pSnapshot: [&] sqlite3_snapshot) -> i32 ---
-    sqlite3_snapshot_free :: (_0: [&] sqlite3_snapshot) -> void ---
-    sqlite3_snapshot_cmp :: (p1: [&] sqlite3_snapshot, p2: [&] sqlite3_snapshot) -> i32 ---
-    sqlite3_snapshot_recover :: (db: sqlite3, zDb: [&] u8) -> i32 ---
     sqlite3_serialize :: (db: sqlite3, zSchema: [&] u8, piSize: [&] sqlite3_int64, mFlags: u32) -> cptr(u8) ---
     sqlite3_deserialize :: (db: sqlite3, zSchema: [&] u8, pData: [&] u8, szDb: sqlite3_int64, szBuf: sqlite3_int64, mFlags: u32) -> i32 ---
     sqlite3_rtree_geometry_callback :: (db: sqlite3, zGeom: [&] u8, xGeom: [&] __func_hack, pContext: [&] void) -> i32 ---
