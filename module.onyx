@@ -177,6 +177,46 @@ Statement.col_double :: (stmt: Statement, index: i32) -> f64 {
 
 
 
+#overload
+Iterator.from :: (stmt: sqlite3.Statement, $result_type: type_expr) -> Iterator(result_type) {
+    info := type_info.get_type_info(result_type)->as_struct()
+
+    return Iterator.generator(
+        &.{
+            stmt = stmt
+            info = info
+            columns = math.min(stmt->cols(), info.members.count)
+        }
+
+        (ctx: $C) -> ? result_type {
+            if !ctx.stmt->step() do return .None
+
+            result: result_type
+            for col in ctx.columns {
+                mem := &ctx.info.members[col]
+
+                switch mem.type {
+                    case u32, i32 do *cast(&i32)  memory.ptr_add(&result, mem.offset) = ctx.stmt->col_int(col)
+                    case u64, i64 do *cast(&i64)  memory.ptr_add(&result, mem.offset) = ctx.stmt->col_int64(col)
+                    case f64      do *cast(&f64)  memory.ptr_add(&result, mem.offset) = ctx.stmt->col_double(col)
+                    case bool     do *cast(&bool) memory.ptr_add(&result, mem.offset) = ctx.stmt->col_int(col) != 0
+                    case str      do *cast(&str)  memory.ptr_add(&result, mem.offset) = ctx.stmt->col_text(col)
+                }
+            }
+
+            return result
+        }
+
+        ctx => {
+            // Since this function consumes everything from the statement, it
+            // will automatically finalize the statement so the caller doesn't have to.
+            ctx.stmt->finalize()
+        }
+    )
+}
+
+
+
 
 #local
 cptru8_to_alloc :: (c: cptr(u8), a: Allocator) -> str {
