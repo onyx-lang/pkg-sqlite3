@@ -2,7 +2,8 @@ package sqlite3
 
 #load "./native"
 
-use core { package, Result, cptr }
+use core { package, Result, cptr, math, memory }
+use runtime { type_info :: info }
 use core.intrinsics.types {*}
 use sqlite3_native { native :: package }
 
@@ -176,9 +177,7 @@ Statement.col_double :: (stmt: Statement, index: i32) -> f64 {
 }
 
 
-
-#overload
-Iterator.from :: (stmt: sqlite3.Statement, $result_type: type_expr) -> Iterator(result_type) {
+Statement.into_iter :: (stmt: Statement, $result_type: type_expr) -> Iterator(result_type) {
     info := type_info.get_type_info(result_type)->as_struct()
 
     return Iterator.generator(
@@ -214,6 +213,9 @@ Iterator.from :: (stmt: sqlite3.Statement, $result_type: type_expr) -> Iterator(
         }
     )
 }
+
+#overload
+Iterator.from :: Statement.into_iter
 
 
 
