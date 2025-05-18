@@ -214,6 +214,25 @@ Statement.into_iter :: (stmt: Statement, $result_type: type_expr) -> Iterator(re
     )
 }
 
+Statement.scan :: (stmt: Statement, dest: ..any) -> bool {
+    for v, col in dest {
+        ptr_type := v.type->info()->as_pointer()
+        if ptr_type.kind != .Pointer do return false
+
+        out := *cast(&rawptr, v.data)
+
+        switch ptr_type.to {
+            case u32, i32 do *cast(&i32)  out = stmt->col_int(col)
+            case u64, i64 do *cast(&i64)  out = stmt->col_int64(col)
+            case f64      do *cast(&f64)  out = stmt->col_double(col)
+            case bool     do *cast(&bool) out = stmt->col_int(col) != 0
+            case str      do *cast(&str)  out = stmt->col_text(col)
+        }
+    }
+
+    return true
+}
+
 #overload
 Iterator.from :: Statement.into_iter
 

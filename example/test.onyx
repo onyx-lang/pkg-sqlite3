@@ -7,19 +7,53 @@ use core {*}
 main :: () {
     use db := sqlite3.open("./test.db")!
 
-    db->exec("CREATE TABLE IF NOT EXISTS users(id INTEGER PRIMARY KEY AUTOINCREMENT, name TEXT NOT NULL);")
+    db->exec("""
+        CREATE TABLE IF NOT EXISTS users (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL
+    );""")
 
-    use stmt := db->prepare("SELECT * FROM users WHERE id=?;")!
-    stmt->bind(1, 4)
-
-    cols := stmt->cols()
-    while stmt->step() {
-        for c in cols {
-            col_name := stmt->col_name(c)
-            col_text := stmt->col_text(c)
-
-            printf("({}) {}: {} {}\t", stmt->col_type(c), col_name, col_text)
-        }
-        print("\n")
+    if false {
+        use s := db->prepare("INSERT INTO users (name) VALUES (?);")!
+        s->bind(1, "This worked!")
+        s->step()
     }
+
+    s0 := db->prepare("SELECT * FROM users where id in (?, ?, ?);");
+    if !s0 {
+        return
+    }
+
+    s := s0!
+
+    s->bind(1, "1")
+    s->bind(2, "4")
+    s->bind(3, "9")
+
+    User :: struct {id: i32; name: str}
+    users: [..] User
+    while s->step() {
+        tmp_user: User
+        if s->scan(&tmp_user.id, &tmp_user.name) {
+            users << tmp_user
+        }
+    }
+    printf("{p}\n", users)
+
+    //users := s |> .into_iter(struct {id: i32; name: str})
+
+    // for user in users {
+    //     printf("{p}\n", user)
+    // }
+
+    // cols := stmt->cols()
+    // while stmt->step() {
+    //     for c in cols {
+    //         col_name := stmt->col_name(c)
+    //         col_text := stmt->col_text(c)
+
+    //         printf("({}) {}: {} {}\t", stmt->col_type(c), col_name, col_text)
+    //     }
+    //     print("\n")
+    // }
 }
