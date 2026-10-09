@@ -108,6 +108,14 @@ errmsg :: (db: SQLite, allocator := context.temp_allocator) -> str {
     return native.sqlite3_errmsg(db._db) |> cptru8_to_alloc(allocator)
 }
 
+SQLite.changes :: (db: SQLite) -> i64 {
+    return native.sqlite3_changes64(db._db)
+}
+
+SQLite.last_insert_rowid :: (db: SQLite) -> i64 {
+    return native.sqlite3_last_insert_rowid(db._db)
+}
+
 
 
 Statement :: struct {
@@ -146,10 +154,44 @@ Statement.bind :: (stmt: Statement, index: i32, value: str) -> Error {
     return ~~native.sqlite3_bind_text(stmt._stmt, index, value.data, value.count, null)
 }
 
+#overload
+Statement.bind :: (stmt: Statement, index: i32, value: bool) -> Error {
+    return ~~native.sqlite3_bind_int(stmt._stmt, index, 1 if value else 0)
+}
+
+#overload
+Statement.bind :: (stmt: Statement, index: i32, value: [] u8) -> Error {
+    ptr: [&] void = null
+    if value.data != null && value.count > 0 {
+        ptr = cast([&] void) value.data
+    }
+    return ~~native.sqlite3_bind_blob(stmt._stmt, index, ptr, value.count, null)
+}
+
+#overload
+Statement.bind :: (stmt: Statement, index: i32, value: ? $T) -> Error {
+    if value {
+        return stmt->bind(index, value?)
+    }
+    return stmt->bind_null(index)
+}
+
+Statement.bind_null :: (stmt: Statement, index: i32) -> Error {
+    return ~~native.sqlite3_bind_null(stmt._stmt, index)
+}
+
 Statement.cols :: (stmt: Statement) => native.sqlite3_column_count(stmt._stmt)
 
 Statement.step :: (stmt: Statement) -> bool {
     return native.sqlite3_step(stmt._stmt)  == native.SQLITE_ROW
+}
+
+/// Ok(true) is a row, Ok(false) is done, Err is a SQLite error.
+Statement.step_status :: (stmt: Statement) -> Result(bool, Error) {
+    rc := native.sqlite3_step(stmt._stmt)
+    if rc == native.SQLITE_ROW  do return .{ Ok = true }
+    if rc == native.SQLITE_DONE do return .{ Ok = false }
+    return .{ Err = ~~rc }
 }
 
 Statement.col_name :: (stmt: Statement, index: i32, alloc := context.temp_allocator) -> str {
@@ -174,6 +216,18 @@ Statement.col_int64 :: (stmt: Statement, index: i32) -> i64 {
 
 Statement.col_double :: (stmt: Statement, index: i32) -> f64 {
     return native.sqlite3_column_double(stmt._stmt, index)
+}
+
+Statement.col_blob :: (stmt: Statement, index: i32, alloc := context.temp_allocator) -> [] u8 {
+    n := native.sqlite3_column_bytes(stmt._stmt, index)
+    if n <= 0 do return .[]
+
+    src := native.sqlite3_column_blob(stmt._stmt, index)
+    if src.data == 0 do return .[]
+
+    out := make([] u8, n, alloc)
+    src->as_unsafe(u8)->read(out)
+    return out
 }
 
 
@@ -220,17 +274,44 @@ Statement.scan :: (stmt: Statement, dest: ..any) -> bool {
         if ptr_type.kind != .Pointer do return false
 
         out := *cast(&rawptr, v.data)
-
-        switch ptr_type.to {
-            case u32, i32 do *cast(&i32)  out = stmt->col_int(col)
-            case u64, i64 do *cast(&i64)  out = stmt->col_int64(col)
-            case f64      do *cast(&f64)  out = stmt->col_double(col)
-            case bool     do *cast(&bool) out = stmt->col_int(col) != 0
-            case str      do *cast(&str)  out = stmt->col_text(col)
-        }
+        if !read_column(stmt, col, ptr_type.to, out) do return false
     }
 
     return true
+}
+
+#local
+read_column :: (stmt: Statement, col: i32, target: type_expr, out: rawptr) -> bool {
+    if type_info.union_constructed_from(target, Optional) {
+        info := type_info.get_type_info(target)
+        if stmt->col_type(col) == .Null {
+            *cast(&u8) out = ~~ Optional(void).tag_enum.None
+            return true
+        }
+
+        inner := info->as_union().variants[1].type
+        if !read_column(stmt, col, inner, memory.ptr_add(out, info.alignment)) {
+            return false
+        }
+        *cast(&u8) out = ~~ Optional(void).tag_enum.Some
+        return true
+    }
+
+    switch target {
+        case u32, i32 { *cast(&i32)  out = stmt->col_int(col);    return true }
+        case u64, i64 { *cast(&i64)  out = stmt->col_int64(col);  return true }
+        case f64      { *cast(&f64)  out = stmt->col_double(col); return true }
+        case bool     { *cast(&bool) out = stmt->col_int(col) != 0; return true }
+        case str      { *cast(&str)  out = stmt->col_text(col);   return true }
+    }
+
+    info := type_info.get_type_info(target)
+    if info.kind == .Slice && info->as_slice().of == u8 {
+        *cast(&[] u8) out = stmt->col_blob(col)
+        return true
+    }
+
+    return false
 }
 
 #overload
