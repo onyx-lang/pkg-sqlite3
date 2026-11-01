@@ -2,7 +2,7 @@ package sqlite3
 
 #load "./native"
 
-use core { package, Result, cptr, math, memory }
+use core { package, Result, cptr, math, memory, misc }
 use runtime { type_info :: info }
 use core.intrinsics.types {*}
 use sqlite3_native { native :: package }
@@ -14,6 +14,7 @@ SQLite :: struct {
 SQLite.close :: close
 SQLite.exec :: exec
 SQLite.prepare :: prepare
+SQLite.query :: query
 SQLite.errmsg :: errmsg
 
 Error :: enum {
@@ -108,6 +109,54 @@ errmsg :: (db: SQLite, allocator := context.temp_allocator) -> str {
     return native.sqlite3_errmsg(db._db) |> cptru8_to_alloc(allocator)
 }
 
+query :: #match {
+    (db: SQLite, $result_type: type_expr, query: str, args: ..any) -> Result(void, Error)
+        where result_type == void
+    {
+        stmt := db->prepare(query)?
+        stmt->bind_many(args)
+        stmt->step()
+        stmt->finalize()
+        return .{ Ok = .{} }
+    }
+
+    (db: SQLite, $result_type: type_expr, query: str, args: ..any) -> Result(result_type, Error)
+        where type_is_slice(result_type)
+    {
+        stmt := db->prepare(query)?
+        if err := stmt->bind_many(args); err != .Ok {
+            return .{Err = err}
+        }
+
+        perform :: macro (_: [] $T) {
+            return .{
+                Ok = stmt
+                    |> .into_iter(T)
+                    |> Iterator.collect()
+            }
+        }
+
+        perform(result_type.{})
+    }
+
+    (db: SQLite, $result_type: type_expr, query: str, args: ..any) -> Result(? result_type, Error)
+        where type_is_struct(result_type)
+    {
+        stmt := db->prepare(query)?
+        if err := stmt->bind_many(args); err != .Ok {
+            return .{Err = err}
+        }
+
+        iterator := stmt->into_iter(result_type)
+        defer Iterator.close(iterator)
+
+        return .{
+            Ok = Iterator.next(iterator)
+        }
+    }
+}
+
+
 SQLite.changes :: (db: SQLite) -> i64 {
     return native.sqlite3_changes64(db._db)
 }
@@ -178,6 +227,39 @@ Statement.bind :: (stmt: Statement, index: i32, value: ? $T) -> Error {
 
 Statement.bind_null :: (stmt: Statement, index: i32) -> Error {
     return ~~native.sqlite3_bind_null(stmt._stmt, index)
+}
+
+Statement.bind_many :: #match {
+    (stmt: Statement, args: [] any) -> Error {
+        b :: macro (idx: i32, val: $T) {
+            if err := stmt->bind(idx, val); err != .Ok {
+                return err
+            }
+        }
+
+        for arg, i in args {
+            switch arg.type {
+                case i32, u32 do b(i+1, *misc.any_as(arg, i32))
+                case i64, u64 do b(i+1, *misc.any_as(arg, i64))
+                case f32      do b(i+1, *misc.any_as(arg, f32))
+                case f64      do b(i+1, *misc.any_as(arg, f64))
+                case str      do b(i+1, *misc.any_as(arg, str))
+                case bool     do b(i+1, *misc.any_as(arg, bool))
+                case rawptr {
+                    if *cast(&rawptr, arg.data) == null {
+                        stmt->bind_null(i+1)
+                    }
+                }
+                case _ ---
+            }
+        }
+
+        return .Ok
+    }
+
+    (stmt: Statement, args: ..any) -> Error {
+        return Statement.bind_many(stmt, cast([] any) args)
+    }
 }
 
 Statement.cols :: (stmt: Statement) => native.sqlite3_column_count(stmt._stmt)
