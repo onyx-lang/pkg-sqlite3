@@ -7,7 +7,7 @@ use sqlite3_native
 main :: () {
     path := module_path(#file);
 
-    c_file_path := string.concat(path, "sqlite.c");
+    c_file_path := str.concat(path, "sqlite.c");
 
     result := generate_c_binding(.{
         output_file = c_file_path,
@@ -31,10 +31,10 @@ main :: () {
 
     flags = tprintf(
         "-Wno-int-conversion {}",
-        string.strip_whitespace(flags)
+        str.strip_whitespace(flags)
     );
 
-    result = compile_c_file(c_file_path, string.concat(path, "onyx_sqlite3"), flags=flags);
+    result = compile_c_file(c_file_path, str.concat(path, "onyx_sqlite3"), flags=flags);
     if !result {
         os.exit(1);
     }
